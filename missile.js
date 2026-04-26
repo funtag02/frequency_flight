@@ -11,8 +11,8 @@ class Missile extends Vehicle {
     this.guided = guided;
     this.target = target; // Enemy or player reference for guided missiles
 
-    this.maxSpeed = isPlayerMissile ? 10 : 6;
-    this.maxForce = guided ? 0.3 : 0;
+    this.maxSpeed = isPlayerMissile ? 10 : 5;  // était 6 pour ennemis
+    this.maxForce = guided ? 0.01 : 0;         // était 0.3 — beaucoup plus doux
     this.r_pourDessin = 4;
     this.r = 8;
     this.alive = true;

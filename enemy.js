@@ -22,7 +22,7 @@ class Enemy extends Vehicle {
     this.lastPlayerY = 0;
 
     this.r_pourDessin = 10;
-    this.r = this.r_pourDessin * 2.5;
+    this.r = this.r_pourDessin * 1.2; // était * 2.5
 
     this.targetY = y;
     this.predictedPlayerPos = null;
@@ -33,7 +33,7 @@ class Enemy extends Vehicle {
 
     // Shooting (shooter / gunner only)
     // Fire every 2 beats = ~41 frames
-    this.shootInterval = this.beatPeriod * 2;
+    this.shootInterval = this.beatPeriod * 8; // était * 2 → maintenant 1/8 BPM ~165 frames
     this.shootTimer = random(this.shootInterval); // stagger initial shot
     this.pendingMissile = null;
   }
