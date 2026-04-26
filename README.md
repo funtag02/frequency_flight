@@ -255,6 +255,71 @@ frequency-flight/
 
 ---
 
+## 🚧 NON IMPLÉMENTÉ (Prochaines itérations)
+
+### V1 (MVP - Actuel)
+
+Fonctionnalité | Statut | Notes
+---|---|---
+🎮 Gameplay basique | ✅ Implémenté | Vaisseau, 4 types d'ennemis, collisions, 2 boucliers
+🧬 Réseau de neurones | ✅ Implémenté | Feed-forward simple, topology [10, 8, 8, 2]
+📊 Fitness calculation | ✅ Implémenté | Impact-based, minimal MVP
+🌊 Steering behaviors | ✅ Implémenté | Seek, pursue, arrive, wander, separate, avoid
+📁 Level loading | ✅ Implémenté | Medium level uniquement
+🎮 Clavier | ✅ Implémenté | ↑↓ mouvement, A/Z boucliers, D debug, P pause, R restart
+🎥 ML5.js | ❌ NON IMPLÉMENTÉ | Requis pour webcam (main pose, face mesh)
+🧠 Neuro-évolution | ❌ NON IMPLÉMENTÉ | Population loop, mutation/crossover/selection
+🏆 Training mode | ❌ NON IMPLÉMENTÉ | IA joueuse, générations, sauvegarde des brains
+⚙️ UI config menu | ❌ NON IMPLÉMENTÉ | Sliders, topology, mutation rate
+🎵 Audio/Musique | ❌ NON IMPLÉMENTÉ | Piste jungle 174 BPM (à intégrer)
+🔧 Obstacles joueur | ❌ NON IMPLÉMENTÉ | Click pour placer obstacles
+📊 Graphique fitness | ❌ NON IMPLÉMENTÉ | Affichage performance ennemis
+💾 Sauvegarde brains | ❌ NON IMPLÉMENTÉ | Export/import JSON
+🎛️ Coordination NN | ❌ NON IMPLÉMENTÉ | Actions synchronisées multi-ennemis
+🌍 Autres niveaux | ❌ NON IMPLÉMENTÉ | Easy, Hard, Killer (prévus)
+
+### Détails des tâches futures
+
+**ML5.js**
+- Intégrer `ml5.handPose` pour altura de main → Y du vaisseau
+- Intégrer `ml5.faceMesh` pour détection bouche/poing
+- Menu de config pour activer/désactiver chaque geste individuellement
+- Fallback clavier toujours actif
+
+**Neuro-evolution**
+- Boucle de génération : 30 ennemis par population
+- Mutation gaussienne (taux : 0.1-0.5, configurable)
+- Crossover 50/50 sur weights
+- Elitism : top 20% conservés
+- Arrêt automatique : 60% d'ennemis touchent le vaisseau sur 3 passages consécutifs
+
+**Training mode**
+- IA joueuse (vaisseau auto-piloté)
+- Affichage : génération courante, fitness best/avg/worst
+- Sauvegarde/charger brains depuis localStorage ou JSON
+
+**UI améliorée**
+- Sliders : topology (inputs 6-20, hidden 1-4 couches, neurons 4-32)
+- Toggle : activation function (tanh / sigmoid / relu)
+- Affichage real-time : fitness graph, performance stats
+- Mode pause pour inspection détente
+
+**Audio**
+- Charger piste jungle 174 BPM depuis `assets/music/`
+- p5.sound pour play/pause
+
+**Obstacles joueur**
+- Click sur canvas → créer obstacle (Vehicle inerte)
+- Ennemis evade = steering avoid
+- Destruction après N collisions ou temps
+
+**Niveaux futurs**
+- `levels/easy/` : moins d'ennemis, spawn plus lent
+- `levels/hard/` : densité 2x, NN plus costaud
+- `levels/killer/` : 3x density, formations coordonnées
+
+---
+
 ## Lancer le projet
 
 ```bash
@@ -267,11 +332,11 @@ python -m http.server 8080
 
 Ouvrir `http://localhost:8080`.
 
-> ML5.js requiert l'accès à la webcam. Le clavier fonctionne sans webcam.
+> **MVP (Actuel)** : Clavier uniquement. ML5.js sera intégré dans V2.
 
 ---
 
 ## Détails techniques
 
 IDE : VSCode  
-Modèles IA utilisés : Claude Sonnet 4.6 principalement pour le code, Gemini pour les specs et la conception initiale.
+Modèles IA utilisés : Claude Haiku 4.5 principalement pour le code et architecture.

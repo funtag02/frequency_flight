@@ -1,0 +1,87 @@
+{
+  "name": "Medium Level",
+  "difficulty": "medium",
+  "description": "Balanced difficulty - mix of all enemy types",
+  "waves": [
+    {
+      "id": 1,
+      "name": "Warm-up hunters",
+      "startFrame": 300,
+      "duration": 600,
+      "spawnInterval": 120,
+      "enemies": [
+        { "type": "hunter", "y": null },
+        { "type": "hunter", "y": null }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Asteroid drift",
+      "startFrame": 900,
+      "duration": 400,
+      "spawnInterval": 150,
+      "enemies": [
+        { "type": "asteroid", "y": null }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Hunter pack",
+      "startFrame": 1300,
+      "duration": 500,
+      "spawnInterval": 100,
+      "enemies": [
+        { "type": "hunter", "y": null },
+        { "type": "hunter", "y": null }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Encirclers from above",
+      "startFrame": 1800,
+      "duration": 400,
+      "spawnInterval": 120,
+      "enemies": [
+        { "type": "encircler", "y": 80 },
+        { "type": "encircler", "y": null }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Mixed assault",
+      "startFrame": 2200,
+      "duration": 600,
+      "spawnInterval": 80,
+      "enemies": [
+        { "type": "hunter", "y": null },
+        { "type": "asteroid", "y": null },
+        { "type": "encircler", "y": null },
+        { "type": "formation", "y": null }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "Formation wall",
+      "startFrame": 2800,
+      "duration": 500,
+      "spawnInterval": 100,
+      "enemies": [
+        { "type": "formation", "y": 100 },
+        { "type": "formation", "y": 200 },
+        { "type": "formation", "y": 300 }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Final gauntlet",
+      "startFrame": 3300,
+      "duration": 800,
+      "spawnInterval": 60,
+      "enemies": [
+        { "type": "hunter", "y": null },
+        { "type": "encircler", "y": null },
+        { "type": "asteroid", "y": null }
+      ]
+    }
+  ]
+}
