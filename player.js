@@ -37,7 +37,8 @@ class Player extends Vehicle {
     
     // Trail
     this.trail = [];
-    this.trailMaxLength = 50;
+    this.trailMaxLength = 80; // plus longue pour l'effet fusée
+    this.trailOffset = 20; // décalage arrière du sprite pour le point de départ trail
     
     // Collision detection
     this.isAlive = true;
@@ -69,21 +70,34 @@ class Player extends Vehicle {
   drawTrail() {
     push();
     noFill();
+
+    let currentTail = this.trail[this.trail.length - 1];
+
     for (let i = 1; i < this.trail.length; i++) {
       let alpha = map(i, 0, this.trail.length, 0, 180);
       let w = map(i, 0, this.trail.length, 0.5, 2.5);
       stroke(0, 255, 200, alpha);
       strokeWeight(w);
-      line(this.trail[i - 1].x, this.trail[i - 1].y,
-          this.trail[i].x,     this.trail[i].y);
+
+      let age1 = this.trail.length - (i - 1);
+      let age2 = this.trail.length - i;
+
+      let x1 = currentTail.x - age1 * 1.5;
+      let x2 = currentTail.x - age2 * 1.5;
+
+      line(x1, this.trail[i - 1].y, x2, this.trail[i].y);
     }
     pop();
   }
 
   drawVehicle() {
+    // Angle basé sur la vitesse verticale, limité pour rester lisible
+    let tiltAngle = map(this.vel.y, -this.maxSpeed, this.maxSpeed, -0.5, 0.5);
+    tiltAngle = constrain(tiltAngle, -0.5, 0.5);
+
     push();
-    translate(this.pos.x + 8, this.pos.y);
-    rotate(0); // Toujours vers la droite
+    translate(this.pos.x + 20, this.pos.y); // décalé vers la droite
+    rotate(tiltAngle);                       // inclinaison dynamique
 
     stroke(this.color);
     strokeWeight(2);
@@ -96,7 +110,7 @@ class Player extends Vehicle {
     );
     pop();
   }
-  
+
   activateShield1() {
     if (this.shield1RechargeTimer <= 0 && !this.shield1Active) {
       this.shield1Active = true;
@@ -147,7 +161,14 @@ class Player extends Vehicle {
     }
     
     // Update trail
-    this.trail.push(this.pos.copy());
+    // Calcule le point arrière en tenant compte du tilt
+    let tiltAngle = map(this.vel.y, -this.maxSpeed, this.maxSpeed, -0.5, 0.5);
+    tiltAngle = constrain(tiltAngle, -0.5, 0.5);
+
+    let tailX = this.pos.x + 20 + (-this.r_pourDessin) * cos(tiltAngle);
+    let tailY = this.pos.y      + (-this.r_pourDessin) * sin(tiltAngle);
+
+    this.trail.push(createVector(tailX, tailY));
     if (this.trail.length > this.trailMaxLength) {
       this.trail.shift();
     }
