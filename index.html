@@ -1,27 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Frequency Flight</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" type="text/css" href="style.css">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Frequency Flight</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-    <script src="libraries/p5.min.js"></script>
-    <script src="libraries/p5.sound.min.js"></script>
+  <!-- ═══════════════════════════════════════
+       START SCREEN
+  ═══════════════════════════════════════ -->
+  <div id="screen-start" class="screen">
+    <div class="start-title glow-cyan">FREQUENCY FLIGHT</div>
+    <div class="start-subtitle">STEERING BEHAVIOURS &amp; NEURO-EVOLUTION</div>
+    <div class="start-buttons">
+      <button class="btn btn-cyan"   id="btn-play">PLAY</button>
+      <button class="btn btn-purple" id="btn-debug">DEBUG</button>
+    </div>
+  </div>
 
-    <script src="vehicle.js"></script>
+  <!-- ═══════════════════════════════════════
+       HUD (visible during play)
+  ═══════════════════════════════════════ -->
+  <div id="hud" class="hidden">
+    <div class="hud-item">
+      <span class="hud-label">DISTANCE</span>
+      <span class="hud-value" id="hud-distance">0</span>
+    </div>
+    <div class="hud-sep"></div>
+    <div class="hud-item">
+      <span class="hud-label">ENEMIES</span>
+      <span class="hud-value" id="hud-enemies">0</span>
+    </div>
+    <div class="hud-sep"></div>
+    <div class="hud-item">
+      <span class="hud-label">SHIELD 1</span>
+      <span class="hud-value" id="hud-shield1">READY</span>
+    </div>
+    <div class="hud-sep"></div>
+    <div class="hud-item">
+      <span class="hud-label">SHIELD 2</span>
+      <span class="hud-value" id="hud-shield2">OFF</span>
+    </div>
+    <div class="hud-sep"></div>
+    <div class="hud-item">
+      <span class="hud-label">MISSILE</span>
+      <span class="hud-value" id="hud-missile">RDY</span>
+    </div>
+    <div id="hud-controls">
+      ↑/↓ MOVE &nbsp;·&nbsp; A S1 &nbsp;·&nbsp; Z S2 &nbsp;·&nbsp;
+      SPACE/CLICK FIRE &nbsp;·&nbsp; P PAUSE &nbsp;·&nbsp; R RESTART
+    </div>
+  </div>
 
-    <script src="nn.js"></script>
-    <script src="fitness.js"></script>
-    <script src="missile.js"></script>
-    <script src="player.js"></script>
-    <script src="enemy.js"></script>
-    <script src="levelgen.js"></script>
-    <script src="ui.js"></script>
-    <script src="sketch.js"></script>
-  </head>
-  <body></body>
+  <!-- ═══════════════════════════════════════
+       PAUSE OVERLAY
+  ═══════════════════════════════════════ -->
+  <div id="screen-pause" class="screen hidden">
+    <div class="overlay-title glow-purple">PAUSED</div>
+    <div class="overlay-hint">PRESS P TO RESUME</div>
+    <button class="btn btn-cyan" id="btn-resume">RESUME</button>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       GAME OVER OVERLAY
+  ═══════════════════════════════════════ -->
+  <div id="screen-gameover" class="screen hidden">
+    <div id="gameover-title">GAME OVER</div>
+    <div id="gameover-distance">DISTANCE — 0</div>
+    <div style="display:flex; gap:16px; margin-top:16px;">
+      <button class="btn btn-cyan"  id="btn-restart">RESTART</button>
+      <button class="btn btn-purple" id="btn-tomenu">MENU</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       DEBUG / LEVEL EDITOR
+  ═══════════════════════════════════════ -->
+  <div id="screen-debug" class="screen hidden">
+
+    <!-- Sidebar: global settings -->
+    <div id="debug-sidebar">
+      <h2>⚙ LEVEL EDITOR</h2>
+
+      <div class="debug-section">
+        <h3>GLOBAL</h3>
+        <div class="field-row">
+          <span class="field-label">SCROLL SPEED</span>
+          <input class="neon-input" type="number" id="cfg-speed" min="1" max="20" step="0.5" value="3.5">
+        </div>
+        <div class="field-row">
+          <span class="field-label">GRAVITY</span>
+          <input class="neon-input" type="number" id="cfg-gravity" min="0" max="1" step="0.01" value="0.08">
+        </div>
+        <div class="field-row">
+          <span class="field-label">UP FORCE</span>
+          <input class="neon-input" type="number" id="cfg-upforce" min="0.05" max="1" step="0.05" value="0.35">
+        </div>
+      </div>
+
+      <div class="debug-section">
+        <h3>STORAGE</h3>
+        <button class="btn btn-yellow btn-sm" id="btn-save">SAVE CONFIG</button>
+        <button class="btn btn-cyan btn-sm"   id="btn-load">LOAD SAVED</button>
+        <button class="btn btn-red btn-sm"    id="btn-reset">RESET DEFAULT</button>
+      </div>
+
+      <div class="debug-section">
+        <h3>LAUNCH</h3>
+        <button class="btn btn-cyan"   id="btn-launch">▶ LAUNCH LEVEL</button>
+        <button class="btn btn-purple btn-sm" id="btn-backmenu" style="margin-top:8px">← MENU</button>
+      </div>
+    </div>
+
+    <!-- Main: wave editor -->
+    <div id="debug-main">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <h2>WAVES</h2>
+        <button class="btn btn-cyan btn-sm" id="btn-add-wave">+ ADD WAVE</button>
+      </div>
+      <div id="waves-container"></div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       p5 canvas injected here automatically
+  ═══════════════════════════════════════ -->
+
+  <!-- Libraries -->
+  <script src="libraries/p5.min.js"></script>
+  <script src="libraries/p5.sound.min.js"></script>
+
+  <!-- Game -->
+  <script src="vehicle.js"></script>
+  <script src="nn.js"></script>
+  <script src="fitness.js"></script>
+  <script src="missile.js"></script>
+  <script src="player.js"></script>
+  <script src="enemy.js"></script>
+  <script src="levelgen.js"></script>
+  <script src="ui.js"></script>
+  <script src="sketch.js"></script>
+</body>
 </html>

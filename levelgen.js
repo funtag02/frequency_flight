@@ -92,9 +92,8 @@ const LEVEL_MEDIUM = {
 };
 
 class LevelGenerator {
-  constructor() {
-    this.levelConfig = LEVEL_MEDIUM;
-    this.frameCounter = 0;
+  constructor(customConfig = null) {
+    this.levelConfig = customConfig || LEVEL_MEDIUM;
     this.waveIndex = 0;
     this.enemies = [];
   }
