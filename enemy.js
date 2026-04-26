@@ -180,6 +180,8 @@ class Enemy extends Vehicle {
 
     if (this.type === 'shooter') {
       // Guided: aim toward player
+      if (this.pos.x <= player.pos.x + 450) return null; // only shoot when not to close to the player
+      print("Player X: " + player.pos.x + ", Enemy X: " + this.pos.x);
       dir = p5.Vector.sub(player.pos, this.pos).normalize();
       guided = true;
     } else {

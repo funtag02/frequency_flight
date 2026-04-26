@@ -62,6 +62,7 @@ Tous les ennemis clignotent en néon à 174 BPM avec une phase aléatoire par en
 
 ### Missiles ennemis
 - `Shooter` : missile guidé à faible force de correction (esquivable)
+              => ne tire pas si il est à < 450px sur l'axe x du vaisseau (seek inesquivable si c'est le cas)
 - `Gunner` : missile droit vers la gauche
 - Tir synchronisé à **1/8 BPM** (~165 frames entre chaque tir)
 - Le seek des missiles guidés s'arrête dès qu'ils dépassent le joueur en X
