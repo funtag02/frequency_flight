@@ -204,6 +204,40 @@ L'écran d'entraînement affiche :
 - Le joueur IA esquive automatiquement — les ennemis s'entraînent contre lui
 - Le meilleur cerveau est sauvegardé en localStorage à la fin
 
+## Adaptation du concept NN à Frequency Flight — difficultés rencontrées
+
+### Le problème fondamental : entraîner *qui* contre *quoi* ?
+
+Dans l'exemple des voitures sur circuit, le problème est simple et bien défini : un véhicule, un circuit fixe, une fitness = distance parcourue. Le cerveau apprend à piloter, et l'environnement ne change pas entre les générations.
+
+Dans Frequency Flight, la situation est inversée et bien plus complexe : **ce sont les ennemis qui ont un cerveau, pas le joueur**. L'objectif est que les ennemis apprennent à être dangereux — mais dangereux contre un joueur humain imprévisible, qu'on ne peut pas simuler facilement.
+
+Ça soulève immédiatement plusieurs questions sans réponse évidente :
+
+- Contre quoi entraîne-t-on les ennemis pendant l'entraînement, si le joueur humain n'est pas là ?
+- Si on utilise un joueur IA, est-ce qu'un ennemi entraîné contre une IA sera dangereux contre un humain ?
+- Comment mesure-t-on qu'un ennemi est "bon" si sa cible (le joueur) change de comportement à chaque partie ?
+
+### Ce qu'on a dû simplifier
+
+**Le joueur IA est trop prévisible.** Pour simuler l'entraînement, on a créé un joueur automatique qui esquive verticalement en fonction de la position de l'ennemi. Ce joueur est honnête mais limité — il ne fait pas de feintes, ne tire pas, ne change pas de stratégie. Un ennemi très entraîné contre lui sera donc optimisé pour battre *ce joueur précis*, pas forcément un humain.
+
+**Un seul ennemi par session.** Le readme documente des formations coordonnées, des bonus de coordination dans la fitness, des patterns multi-ennemis — rien de tout ça n'est entraînable avec l'architecture actuelle. Coordonner plusieurs cerveaux pendant l'entraînement nécessiterait de faire jouer N ennemis simultanément, de mesurer leur coordination collective, et de les évaluer ensemble plutôt qu'individuellement. C'est un problème d'entraînement multi-agents qui dépasse largement la portée du projet.
+
+**La fitness ne mesure pas vraiment la dangerosité.** Le score actuel récompense les impacts directs et les esquives forcées — mais un ennemi peut accumuler des impacts en se jetant bêtement sur le joueur en boucle (wrap), sans vraiment "apprendre" à anticiper. La pénalité de prévisibilité et le bonus de coordination du readme sont restés non implémentés car ils nécessitent un historique comportemental complexe à calculer frame par frame.
+
+**Les curseurs de topologie ne sont pas exposés.** Le readme prévoyait des sliders pour modifier le nombre de couches, de neurones, la fonction d'activation — ces paramètres existent dans le code (`NeuralNetwork` accepte une topologie arbitraire) mais l'UI d'entraînement ne les expose pas encore. Ajouter des curseurs qui redémarrent l'entraînement avec une nouvelle topologie est prévu en V3.
+
+**La condition d'arrêt automatique n'est pas active.** Le critère "60% des ennemis touchent le vaisseau sur 3 passages consécutifs" est documenté mais non implémenté — l'entraînement tourne toujours les N générations complètes.
+
+**ML5.js n'a pas pu être chargé.** La librairie est bloquée par la politique de tracking prevention des navigateurs modernes en environnement local (LiveServer). Le code d'intégration (`ml5controller.js`) est écrit et fonctionnel, mais ne peut pas être testé sans déploiement sur un serveur sans restriction CORS, ou en hébergeant la lib localement — ce qui n'était pas possible dans le temps imparti.
+
+### Ce qui fonctionne malgré tout
+
+L'algorithme génétique tourne correctement : on observe bien une séparation entre max fitness et avg fitness dès la première génération, et une convergence progressive sur les générations suivantes. Les cerveaux entraînés sont sauvegardés en localStorage. Le graphique d'évolution confirme que la population apprend quelque chose — même si ce "quelque chose" est optimisé pour battre le joueur IA plutôt qu'un humain.
+
+Le vrai apprentissage observable : après quelques générations, les ennemis tendent à se positionner sur l'axe Y du joueur plus rapidement et à maintenir la pression plus longtemps, plutôt que de dériver aléatoirement.
+
 ---
 
 ## ML5.js — Contrôle par webcam
@@ -278,27 +312,32 @@ frequency-flight/
 
 ## État d'implémentation
 
-| Fonctionnalité | Statut | Notes |
-|---|---|---|
-| 🎮 Gameplay basique | ✅ | Vaisseau, 6 types d'ennemis, collisions, 2 boucliers |
-| 🚀 Missiles joueur | ✅ | ESPACE / clic gauche |
-| 🔫 Missiles ennemis | ✅ | Shooter guidé + Gunner droit, 2 HP, sync 1/8 BPM |
-| 💀 Limites Y mortelles | ✅ | Plafond et sol = mort immédiate |
-| 🎨 Thème néon | ✅ | CSS variables, Orbitron, glow, pulsation BPM ennemis |
-| 🏗️ Architecture hybride | ✅ | Canvas p5 = jeu / DOM = UI |
-| 🛠️ Éditeur de niveau | ✅ | Waves, ennemis, params globaux, localStorage |
-| 🔊 Effets sonores | ✅ | 5 sons synthétiques p5.Oscillator / Noise |
-| 🧬 Réseau de neurones | ✅ | Feed-forward [10, 8, 8, 2] |
-| 🌊 Steering behaviors | ✅ | Seek, pursue, arrive, wander, separate, avoid |
-| 🧠 Neuro-évolution | ✅ | GA 10 gen × 20 pop × 3 sessions |
-| 💾 Sauvegarde best brain | ✅ | localStorage `bestBrain_v1` |
-| 📊 Graphique fitness | ✅ | Canvas néon — courbes max/avg par génération |
-| 🎥 ML5.js | ⚠️ | Code prêt, désactivé — blocage CDN navigateur |
-| 🎵 Musique 174 BPM | ❌ | V2 — piste FL Studio via p5.sound |
-| 🔁 Chargement brain en jeu | ❌ | V3 |
-| 🤙 Tir + déplacement ML5 simultané | ❌ | V3 — munitions limitées |
-| 🔧 Obstacles joueur | ❌ | V4 — clic pour placer, ennemis évitent |
-| 🌍 Niveaux easy/hard/killer | ❌ | V4 |
+| Fonctionnalité | Statut | Demandé | Notes |
+|---|---|---|---|
+| 🎮 Gameplay basique | ✅ | — | Vaisseau, 6 types d'ennemis, collisions, 2 boucliers |
+| 🚀 Missiles joueur | ✅ | — | ESPACE / clic gauche |
+| 🔫 Missiles ennemis | ✅ | — | Shooter guidé + Gunner droit, 2 HP, sync 1/8 BPM |
+| 💀 Limites Y mortelles | ✅ | — | Plafond et sol = mort immédiate |
+| 🎨 Thème néon | ✅ | — | CSS variables, Orbitron, glow, pulsation BPM ennemis |
+| 🏗️ Architecture hybride | ✅ | — | Canvas p5 = jeu / DOM = UI |
+| 🛠️ Éditeur de niveau | ✅ | ✅ | Waves, ennemis, params globaux, localStorage |
+| 🔊 Effets sonores | ✅ | — | 5 sons synthétiques p5.Oscillator / Noise |
+| 🧬 Réseau de neurones | ✅ | ✅ | Feed-forward [10, 8, 8, 2] |
+| 🌊 Steering behaviors | ✅ | ✅ | Seek, pursue, arrive, wander, separate, avoid |
+| 🧠 Neuro-évolution | ✅ | ✅ | GA 10 gen × 20 pop × 3 sessions, élitisme 20% |
+| 💾 Sauvegarde best brain | ✅ | ✅ | localStorage `bestBrain_v1` |
+| 📊 Graphique fitness | ✅ | — | Canvas néon — courbes max/avg par génération |
+| 🏁 Condition d'arrêt entraînement | ❌ | ✅ | Prévu : 60% hits sur 3 passages — non implémenté |
+| 🎛️ Curseurs topologie NN | ❌ | ✅ | Couches, neurones, activation — UI non exposée |
+| 🔁 Généralisation du cerveau entraîné | ❌ | ✅ | Entraînement sur niveaux variés — non implémenté |
+| 🤝 Coordination multi-ennemis | ❌ | ✅ | Entraînement multi-agents trop complexe — voir section difficultés |
+| 🏆 Compétition de cerveaux | ❌ | ✅ | Charger N cerveaux en partie — V3 |
+| 🔁 Chargement brain en jeu | ❌ | ✅ | Jouer contre le meilleur cerveau sauvegardé — V3 |
+| 🎥 ML5.js | ⚠️ | ✅ | Code prêt (`ml5controller.js`), bloqué CDN navigateur |
+| 🎵 Musique 174 BPM | ✅ | — | piste FL Studio via p5.sound |
+| 🤙 Tir + déplacement ML5 simultané | ❌ | — | V3 — munitions limitées |
+| 🔧 Obstacles joueur (clic souris) | ❌ | ✅ | V4 — ennemis utilisent steering avoid |
+| 🌍 Niveaux easy/hard/killer | ❌ | ✅ | V4 — JSON dans `levels/` |
 
 ---
 

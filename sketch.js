@@ -4,6 +4,7 @@
  */
 
 const TRAINING_STEPS_PER_FRAME = 30; // 30× plus rapide
+let backgroundMusic;
 let k;
 let player;
 let levelGenerator;
@@ -12,7 +13,7 @@ let gameState = 'start'; // 'start' | 'playing' | 'paused' | 'gameOver' | 'debug
 let frameCounter = 0;
 
 let worldScrollX = 0;
-let enemyScrollSpeed = 3.5;
+let enemyScrollSpeed = 10.5;
 
 const BPM = 174;
 const BEAT_FRAMES = (60 / BPM) * 60;
@@ -29,7 +30,12 @@ let soundReady = false;
 
 // Custom level config (set by debug editor, or default)
 let activeLevelConfig = null;
-let activeGlobalConfig = { speed: 3.5, gravity: 0.08, upForce: 0.35 };
+let activeGlobalConfig = { speed: 10.5, gravity: 0.08, upForce: 0.35 };
+
+function preload() {
+  console.log("preloading music!");
+  backgroundMusic = loadSound('assets/background_music/Toothless Dancing v5 dnb_2_v5.mp3');
+}
 
 // ─── DOM SETUP ─────────────────────────────────────────────
 function setupDOM() {
@@ -74,10 +80,14 @@ function showScreen(id) {
 }
 
 function startGame(fromDebug = false) {
+  if (backgroundMusic.isPlaying()) {
+    backgroundMusic.stop();
+  } 
+  backgroundMusic.loop();
   if (fromDebug && activeLevelConfig) {
     enemyScrollSpeed = activeGlobalConfig.speed;
   } else {
-    enemyScrollSpeed = 3.5;
+    enemyScrollSpeed = 10.5;
     activeLevelConfig = null;
   }
 
@@ -173,6 +183,9 @@ function triggerGameOver() {
   document.getElementById('gameover-distance').textContent =
     `DISTANCE — ${frameCounter}`;
   showScreen('screen-gameover');
+  if (backgroundMusic.isPlaying()) {
+    backgroundMusic.stop();
+  }
 }
 
 // ─── FITNESS CHART ──────────────────────────────────────────
