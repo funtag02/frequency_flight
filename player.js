@@ -44,31 +44,57 @@ class Player extends Vehicle {
   }
   
   applyInput(keys) {
-    let force = createVector(0, 0);
-    
-    // Vertical movement (player controlled)
-    // Support both arrow keys and WASD
-    if (keys[38] || keys['w']) {  // 38 = UP arrow
-      force.y -= this.upForce;
+  let force = createVector(0, 0);
+
+  if (keys[38] || keys['w']) {
+    force.y -= this.upForce;
+  }
+  if (keys[40] || keys['s']) {
+    force.y += this.downForce;
+  }
+
+  force.y += this.gravity;
+  this.applyForce(force);
+}
+
+  checkBoundaries() {
+    if (this.pos.y <= this.ceilingThreshold) {
+      this.isAlive = false;
     }
-    if (keys[40] || keys['s']) {  // 40 = DOWN arrow
-      force.y += this.downForce;
+    if (this.pos.y >= this.floorThreshold) {
+      this.isAlive = false;
     }
-    
-    // Apply gravity
-    force.y += this.gravity;
-    
-    // Constrain vertical movement by boundaries
-    if (this.pos.y < this.ceilingThreshold) {
-      force.y = 0; // Block upward movement at ceiling
-      this.pos.y = this.ceilingThreshold;
-      this.vel.y = 0;
+  }
+
+  drawTrail() {
+    push();
+    noFill();
+    for (let i = 1; i < this.trail.length; i++) {
+      let alpha = map(i, 0, this.trail.length, 0, 180);
+      let w = map(i, 0, this.trail.length, 0.5, 2.5);
+      stroke(0, 255, 200, alpha);
+      strokeWeight(w);
+      line(this.trail[i - 1].x, this.trail[i - 1].y,
+          this.trail[i].x,     this.trail[i].y);
     }
-    if (this.pos.y > this.floorThreshold) {
-      this.isAlive = false; // Death at floor
-    }
-    
-    this.applyForce(force);
+    pop();
+  }
+
+  drawVehicle() {
+    push();
+    translate(this.pos.x + 8, this.pos.y);
+    rotate(0); // Toujours vers la droite
+
+    stroke(this.color);
+    strokeWeight(2);
+    fill(this.color);
+
+    triangle(
+      -this.r_pourDessin, -this.r_pourDessin / 2,
+      -this.r_pourDessin,  this.r_pourDessin / 2,
+      this.r_pourDessin,  0
+    );
+    pop();
   }
   
   activateShield1() {
@@ -133,19 +159,6 @@ class Player extends Vehicle {
     this.drawVehicle();
   }
   
-  drawTrail() {
-    push();
-    noFill();
-    strokeWeight(2);
-    
-    for (let i = 0; i < this.trail.length - 1; i++) {
-      let alpha = map(i, 0, this.trail.length, 50, 200);
-      stroke(0, 255, 200, alpha);
-      line(this.trail[i].x, this.trail[i].y, this.trail[i + 1].x, this.trail[i + 1].y);
-    }
-    pop();
-  }
-  
   drawShields() {
     push();
     noFill();
@@ -170,21 +183,5 @@ class Player extends Vehicle {
     
     pop();
   }
-  
-  drawVehicle() {
-    push();
-    translate(this.pos.x, this.pos.y);
-    rotate(this.vel.heading());
-    
-    stroke(this.color);
-    strokeWeight(2);
-    fill(this.color);
-    
-    // Neon spaceship shape
-    triangle(-this.r_pourDessin, -this.r_pourDessin / 2, 
-             -this.r_pourDessin, this.r_pourDessin / 2, 
-             this.r_pourDessin, 0);
-    
-    pop();
-  }
+
 }

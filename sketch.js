@@ -79,6 +79,14 @@ function updateGame() {
   // Update player
   player.applyInput(keys);
   player.update();
+
+  player.applyInput(keys);
+  player.update();
+  player.checkBoundaries();   // ← ajoute cette ligne
+
+  if (!player.isAlive) {      // ← ajoute ce bloc
+    gameState = 'gameOver';
+  }
   
   // Generate level (spawn enemies)
   levelGenerator.update(frameCounter);
