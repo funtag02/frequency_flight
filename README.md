@@ -270,12 +270,62 @@ frequency-flight/
 
 ---
 
+## ML5.js — Contrôle par webcam
+
+### Activation
+Touche `M` en jeu — active/désactive la détection. Un aperçu webcam apparaît en haut à droite (160×120px, miroir).
+
+### Règle clavier vs ML5
+- Si le joueur utilise le clavier ou la souris pendant une partie, ML5 est **désactivé pour cette session**
+- Il se réactive automatiquement à la **prochaine partie** (restart `R` ou menu)
+- La touche `M` le réactive immédiatement à tout moment
+
+### Gestes détectés
+
+| Geste | Action | Description |
+|---|---|---|
+| ✋ Main ouverte | Monter / descendre | Position Y du poignet vs centre écran |
+| 🤙 Gunfinger | Tirer | Index horizontal + pouce vertical, autres fermés |
+| ✊ Poing fermé | Bouclier temporaire (S1) | Tous les doigts fermés |
+| ✌️ Signe V | Pause | Index + majeur tendus, écartés |
+| 🖕 Doigt d'honneur | Restart | Majeur seul tendu |
+
+### Limitations actuelles
+- Un seul geste actif à la fois — **impossible de se déplacer et tirer simultanément**
+- Shield 2 non assigné (ergonomie insuffisante)
+
+### Idées futures (V3+)
+- Déplacement + tir simultané avec **munitions limitées** qui se régénèrent — main ouverte pour déplacer, gunfinger consomme une cartouche
+- Shield 2 assigné à un geste distinct (ex: main de côté)
+- Bouche ouverte (`ml5.faceMesh`) → tir alternatif
+- Calibration dynamique de la zone de détection
+- Visualisation des landmarks en mode debug
+
+---
+
+## Idées en attente (backlog)
+
+| Idée | Priorité | Notes |
+|---|---|---|
+| Munitions limitées + régénération | V3 | Couplé au tir ML5 simultané au déplacement |
+| Shield 2 via ML5 | V3 | Geste à définir — ergonomie à tester |
+| Bouche ouverte → tir (faceMesh) | V3 | Alternative au gunfinger |
+| Obstacles joueur (clic) | V4 | Ennemis utilisent steering avoid |
+| Niveaux easy / hard / killer | V4 | JSON dans `levels/` |
+| Graphique fitness interactif | V4 | Hover sur les points = détails génération |
+| Chargement brain entraîné en jeu | V3 | Jouer contre le meilleur cerveau sauvegardé |
+| Coordination multi-ennemis NN | V4 | Output 2 du NN enfin utilisé |
+| Musique 174 BPM (FL Studio) | V2 | `p5.sound` — piste liquid dnb |
+| Mode spectateur training | V4 | Voir le canvas pendant l'entraînement |
+
+---
+
 ## État d'implémentation
 
 | Fonctionnalité | Statut | Notes |
 |---|---|---|
 | 🎮 Gameplay basique | ✅ | Vaisseau, 6 types d'ennemis, collisions, 2 boucliers |
-| 🚀 Missiles joueur | ✅ | ESPACE / clic, cooldown, tir droit |
+| 🚀 Missiles joueur | ✅ | ESPACE / clic / gunfinger ML5 |
 | 🔫 Missiles ennemis | ✅ | Shooter guidé + Gunner droit, 2 HP, sync 1/8 BPM |
 | 💀 Limites Y mortelles | ✅ | Plafond et sol = mort immédiate |
 | 🎨 Thème néon | ✅ | CSS variables, Orbitron, glow, pulsation BPM ennemis |
@@ -284,15 +334,20 @@ frequency-flight/
 | 🔊 Effets sonores | ✅ | 5 sons synthétiques p5.Oscillator / Noise |
 | 🧬 Réseau de neurones | ✅ | Feed-forward [10, 8, 8, 2] |
 | 🌊 Steering behaviors | ✅ | Seek, pursue, arrive, wander, separate, avoid |
-| 🧠 Neuro-évolution | ✅ | GA 10 gen × 20 pop × 3 sessions, élitisme 20%, mutation/crossover |
-| 🎥 ML5.js | ❌ | V3 — handPose, faceMesh, tir bouche ouverte |
-| 🎵 Musique 174 BPM | ❌ | V2 — piste FL Studio via p5.sound |
+| 🧠 Neuro-évolution | ✅ | GA 10 gen × 20 pop × 3 sessions |
+| 🎥 ML5.js — déplacement | ✅ | Main ouverte → haut/bas |
+| 🎥 ML5.js — tir | ✅ | Gunfinger |
+| 🎥 ML5.js — shield 1 | ✅ | Poing fermé |
+| 🎥 ML5.js — pause | ✅ | Signe V |
+| 🎥 ML5.js — restart | ✅ | Doigt d'honneur |
+| 🎥 ML5.js — shield 2 | ❌ | V3 — geste à définir |
+| 🎵 Musique 174 BPM | ❌ | V2 |
+| 💾 Chargement brain en jeu | ❌ | V4 |
 | 💾 Sauvegarde brains | ✅ | localStorage `bestBrain_v1` |
-| 📊 Graphique fitness | ❌ | V4 — affichage historique performance par génération |
-| 🔧 Obstacles joueur | ❌ | V5 — clic pour placer, ennemis évitent |
+| 📊 Graphique fitness interactif | ✅ | V2 |
+| 🔧 Obstacles joueur | ❌ | V5 — clic pour placer, ennemis évitent  |
 | 🌍 Niveaux easy/hard/killer | ❌ | V5 |
-
----
+| 🤙 Tir + déplacement simultané | ❌ | V3 — munitions limitées |
 
 ## Lancer le projet
 

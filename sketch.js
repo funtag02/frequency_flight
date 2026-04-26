@@ -4,7 +4,7 @@
  */
 
 const TRAINING_STEPS_PER_FRAME = 30; // 30× plus rapide
-
+let k;
 let player;
 let levelGenerator;
 let gameUI;
@@ -55,6 +55,9 @@ function setupDOM() {
 
   // Training
   document.getElementById('btn-train-cancel').onclick = () => goToMenu();
+
+  // ml5 toggle
+  if (k === 'm') ml5Controller.toggle();
 }
 
 function showScreen(id) {
@@ -90,6 +93,8 @@ function startGame(fromDebug = false) {
   frameCounter   = 0;
   worldScrollX   = 0;
   gameState      = 'playing';
+
+  ml5Controller.resetForNewSession();
 
   showScreen(null); // hide all overlays, show HUD
   document.getElementById('hud').classList.remove('hidden');
@@ -684,6 +689,35 @@ function updateGame() {
   }
 
   player.applyInput(keys);
+  // ML5 input — uniquement si pas de keyboard override
+  if (!ml5Controller._keyboardOverride) {
+    player.applyML5Input(ml5Controller);
+
+    // Shoot via gesture
+    if (ml5Controller.shoot) {
+      let m = player.shoot();
+      if (m) {
+        playerMissiles.push(m);
+        try { sndLaser.play(); } catch(e) {}
+      }
+    }
+
+    // Shield 1
+    if (ml5Controller.shield1) player.activateShield1();
+
+    // Pause via V sign
+    if (ml5Controller.pauseGest) {
+      gameState = 'paused';
+      showScreen('screen-pause');
+      document.getElementById('hud').classList.remove('hidden');
+    }
+
+    // Restart via middle finger
+    if (ml5Controller.restartGest) {
+      startGame(activeLevelConfig !== null);
+      return;
+    }
+  }
   player.update();
   player.checkBoundaries();
 
@@ -915,9 +949,19 @@ function keyPressed() {
   if (gameState === 'playing') {
     if (k === 'a') player.activateShield1();
     if (k === 'z') player.activateShield2();
-    if (keyCode === 32) shootPressed = true;
+    if (keyCode === 32) {
+      shootPressed = true;
+      // Keyboard used → disable ML5 for this session
+      ml5Controller.notifyKeyboardUsed();
+    }
+    // Arrow keys also count as keyboard override
+    if (keyCode === 38 || keyCode === 40 ||
+        k === 'w'    || k === 's') {
+      ml5Controller.notifyKeyboardUsed();
+    }
   }
 
+  if (k === 'm') ml5Controller.toggle();
   if (k === 'd') gameUI.toggleDebug();
 
   if (k === 'p') {
@@ -941,5 +985,8 @@ function keyReleased() {
 }
 
 function mousePressed() {
-  if (gameState === 'playing') shootPressed = true;
+  if (gameState === 'playing') {
+    shootPressed = true;
+    ml5Controller.notifyKeyboardUsed();
+  }
 }

@@ -39,12 +39,27 @@ class Player extends Vehicle {
     this.canShoot = true;
 
     this.isAlive = true;
+
+    this._keyboardEverUsed = false;
+  }
+
+  applyML5Input(ml5) {
+    if (!ml5.isActive) return;
+    let force = createVector(0, 0);
+    if (ml5.moveUp)   force.y -= this.upForce;
+    if (ml5.moveDown) force.y += this.downForce;
+    // Pas de gravité ici — déjà appliquée dans applyInput()
+    this.applyForce(force);
   }
 
   applyInput(keys) {
     let force = createVector(0, 0);
+    let anyKey = keys[38] || keys['w'] || keys[40] || keys['s'];
+
     if (keys[38] || keys['w']) force.y -= this.upForce;
     if (keys[40] || keys['s']) force.y += this.downForce;
+
+    // Gravité toujours appliquée ici — ML5 ne l'applique pas si clavier actif
     force.y += this.gravity;
     this.applyForce(force);
   }

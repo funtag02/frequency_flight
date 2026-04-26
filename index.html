@@ -196,17 +196,45 @@
   <!-- Libraries -->
   <script src="libraries/p5.min.js"></script>
   <script src="libraries/p5.sound.min.js"></script>
-
+  <!-- Après p5.sound, avant les scripts du jeu -->
+  <script src="https://cdn.jsdelivr.net/npm/ml5@1/dist/ml5.min.js"></script>
   <!-- Game -->
   <script src="vehicle.js"></script>
   <script src="nn.js"></script>
   <script src="fitness.js"></script>
   <script src="neuroevolution.js"></script>
   <script src="missile.js"></script>
+  <script src="ml5controller.js"></script>
   <script src="player.js"></script>
   <script src="enemy.js"></script>
   <script src="levelgen.js"></script>
   <script src="ui.js"></script>
   <script src="sketch.js"></script>
+
+  <!-- Webcam preview (coin haut droit, visible en jeu) -->
+  <div id="webcam-container" style="
+    position: fixed;
+    top: 64px; right: 16px;
+    width: 160px; height: 120px;
+    z-index: 60;
+    border: 1px solid var(--border-neon);
+    background: #000;
+    display: none;
+    flex-direction: column;
+  ">
+    <video id="webcam-video" width="160" height="120"
+      style="display:block;transform:scaleX(-1);" autoplay muted playsinline></video>
+    <div id="webcam-gesture" style="
+      position:absolute; bottom:0; left:0; right:0;
+      font-family:Orbitron; font-size:9px; letter-spacing:1px;
+      background:rgba(0,0,20,0.75); color:var(--neon-cyan);
+      padding:2px 6px; text-align:center;
+    ">— —</div>
+    <div id="webcam-status" style="
+      position:absolute; top:4px; right:6px;
+      font-family:Orbitron; font-size:8px;
+      color:var(--neon-cyan);
+    ">ML5</div>
+  </div>
 </body>
 </html>
