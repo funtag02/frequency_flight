@@ -3,6 +3,8 @@
  * DOM handles menus/HUD, p5 handles game rendering
  */
 
+const TRAINING_STEPS_PER_FRAME = 30; // 30× plus rapide
+
 let player;
 let levelGenerator;
 let gameUI;
@@ -107,64 +109,58 @@ function goToMenu() {
 function startTraining() {
   gameState = 'training';
   showScreen('screen-training');
-  
-  // Initialize GA
-  geneticAlgorithm = new GeneticAlgorithm(20, [10, 8, 8, 2]); // 20 individuals
-  geneticAlgorithm.startTraining(10); // 10 generations
-  
-  // Set session limits
-  geneticAlgorithm.maxSessionFrames = 1200; // 20 seconds at 60fps
-  geneticAlgorithm.maxSessionDistance = 5000; // Stop early if distance exceeds this
-  
-  // Update max gen display
+
+  geneticAlgorithm = new GeneticAlgorithm(20, [10, 8, 8, 2]);
+  geneticAlgorithm.startTraining(10);
+  geneticAlgorithm.maxSessionFrames = 600;
+
   document.getElementById('train-max-gen').textContent = '10';
-  
-  // Start first evaluation session
+
+  // Init chart après que le DOM soit affiché
+  setTimeout(initChart, 50);
+
   startTrainingSession();
 }
 
 function startTrainingSession() {
-  // Setup a game for evaluating current GA individual
   let individual = geneticAlgorithm.getCurrentIndividual();
   if (!individual) {
-    // All individuals evaluated, advance to next generation
     if (geneticAlgorithm.advanceToNextGeneration()) {
-      startTrainingSession(); // Start evaluating new generation
+      startTrainingSession();
     } else {
-      // Training complete
       finishTraining();
     }
     return;
   }
-  
-  // Setup minimal game (no levelGenerator needed for training)
+
   enemyScrollSpeed = 3.5;
-  
   player = new Player(100, height / 2);
   player.gravity = 0.08;
   player.upForce = 0.35;
-  
+
   playerMissiles = [];
-  enemyMissiles = [];
-  frameCounter = 0;
-  worldScrollX = 0;
-  
-  // Create test enemy with current brain
-  window.trainingEnemy = new Enemy(width + 100, height / 2, 'shooter', individual.brain);
-  window.trainingEnemy.fitnessTracker.resetBatch(); // Reset for this session
-  
-  // Show HUD and canvas
-  document.getElementById('hud').classList.add('hidden');
+  enemyMissiles  = [];
+  frameCounter   = 0;
+  worldScrollX   = 0;
+
+  // Spawn proche du joueur pour que la session soit utile
+  let spawnX = width * 0.6; // ~60% de l'écran — atteint le joueur rapidement
+  window.trainingEnemy = new Enemy(spawnX, height / 2, 'hunter', individual.brain);
+  // Ne pas reset le fitnessTracker ici — il est neuf à chaque new Enemy()
 }
 
 function finishTraining() {
   gameState = 'start';
-  showScreen('screen-start');
-  
-  // Save best brain
   let best = geneticAlgorithm.getBestBrain();
   localStorage.setItem('bestBrain_v1', JSON.stringify(best.toJSON()));
-  alert(`✅ Training complete!\nBest Fitness: ${geneticAlgorithm.maxFitness.toFixed(2)}\nBrain saved to localStorage`);
+
+  let subtitle = document.querySelector('.start-subtitle');
+  subtitle.textContent =
+    `✓ TRAINING COMPLETE — BEST FITNESS: ${geneticAlgorithm.maxFitness.toFixed(2)}`;
+  subtitle.style.color      = 'var(--neon-yellow)';
+  subtitle.style.textShadow = '0 0 8px var(--neon-yellow)';
+
+  showScreen('screen-start');
 }
 
 function triggerGameOver() {
@@ -174,13 +170,210 @@ function triggerGameOver() {
   showScreen('screen-gameover');
 }
 
+// ─── FITNESS CHART ──────────────────────────────────────────
+
+// Historique des stats par génération
+let chartHistory = []; // [{gen, max, avg}]
+
+function initChart() {
+  chartHistory = [];
+  let canvas = document.getElementById('fitness-chart');
+  if (!canvas) return;
+  // Synchronise la résolution du canvas avec son affichage CSS
+  canvas.width  = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+}
+
+function pushChartData(gen, maxFit, avgFit) {
+  chartHistory.push({ gen, max: maxFit, avg: avgFit });
+  drawFitnessChart();
+}
+
+function drawFitnessChart() {
+  let canvas = document.getElementById('fitness-chart');
+  if (!canvas) return;
+
+  // Resize si nécessaire
+  if (canvas.width !== canvas.offsetWidth || canvas.height !== canvas.offsetHeight) {
+    canvas.width  = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+  }
+
+  let ctx = canvas.getContext('2d');
+  let W = canvas.width;
+  let H = canvas.height;
+
+  // Padding intérieur
+  let padL = 52, padR = 24, padT = 40, padB = 40;
+  let chartW = W - padL - padR;
+  let chartH = H - padT - padB;
+
+  // Clear
+  ctx.clearRect(0, 0, W, H);
+
+  // Grille néon
+  let totalGens = geneticAlgorithm ? geneticAlgorithm.totalGenerations : 10;
+  let allValues = chartHistory.flatMap(d => [d.max, d.avg]);
+  let maxVal    = allValues.length > 0 ? Math.max(...allValues) : 100;
+  maxVal = maxVal === 0 ? 100 : maxVal * 1.1; // 10% de marge
+
+  // Lignes horizontales
+  let gridLines = 5;
+  ctx.strokeStyle = 'rgba(0, 255, 200, 0.08)';
+  ctx.lineWidth = 1;
+  ctx.font = '10px Orbitron';
+  ctx.fillStyle = 'rgba(0,255,200,0.4)';
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= gridLines; i++) {
+    let y = padT + chartH - (i / gridLines) * chartH;
+    let val = (i / gridLines) * maxVal;
+    ctx.beginPath();
+    ctx.moveTo(padL, y);
+    ctx.lineTo(padL + chartW, y);
+    ctx.stroke();
+    ctx.fillText(floor(val), padL - 6, y + 4);
+  }
+
+  // Lignes verticales (une par génération)
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(0,255,200,0.3)';
+  for (let g = 0; g <= totalGens; g++) {
+    let x = padL + (g / totalGens) * chartW;
+    ctx.strokeStyle = 'rgba(0,255,200,0.06)';
+    ctx.beginPath();
+    ctx.moveTo(x, padT);
+    ctx.lineTo(x, padT + chartH);
+    ctx.stroke();
+    if (g > 0 && g % 2 === 0) {
+      ctx.fillStyle = 'rgba(0,255,200,0.35)';
+      ctx.fillText(g, x, padT + chartH + 18);
+    }
+  }
+
+  if (chartHistory.length < 1) return;
+
+  // Axe X label
+  ctx.fillStyle = 'rgba(0,255,200,0.3)';
+  ctx.textAlign = 'center';
+  ctx.fillText('GEN', padL + chartW / 2, H - 4);
+
+  // Helper: convertit (gen, val) → pixel
+  function toPixel(gen, val) {
+    let x = padL + (gen / totalGens) * chartW;
+    let y = padT + chartH - (val / maxVal) * chartH;
+    return { x, y };
+  }
+
+  // Dessine une courbe avec glow
+  function drawCurve(data, colorMain, colorGlow) {
+    if (data.length < 1) return;
+
+    // Glow (trait large, transparent)
+    ctx.shadowBlur    = 12;
+    ctx.shadowColor   = colorGlow;
+    ctx.strokeStyle   = colorGlow;
+    ctx.lineWidth     = 4;
+    ctx.lineJoin      = 'round';
+    ctx.lineCap       = 'round';
+    ctx.beginPath();
+    data.forEach((d, i) => {
+      let p = toPixel(d.gen, d.val);
+      i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+
+    // Trait net
+    ctx.shadowBlur  = 0;
+    ctx.strokeStyle = colorMain;
+    ctx.lineWidth   = 2;
+    ctx.beginPath();
+    data.forEach((d, i) => {
+      let p = toPixel(d.gen, d.val);
+      i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+
+    // Points néon à chaque génération
+    data.forEach(d => {
+      let p = toPixel(d.gen, d.val);
+      ctx.shadowBlur  = 8;
+      ctx.shadowColor = colorGlow;
+      ctx.fillStyle   = colorMain;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+  }
+
+  // Aire sous la courbe MAX (remplie, très transparente)
+  if (chartHistory.length > 1) {
+    let grad = ctx.createLinearGradient(0, padT, 0, padT + chartH);
+    grad.addColorStop(0, 'rgba(255, 220, 0, 0.12)');
+    grad.addColorStop(1, 'rgba(255, 220, 0, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    let first = toPixel(chartHistory[0].gen, chartHistory[0].max);
+    ctx.moveTo(first.x, padT + chartH);
+    ctx.lineTo(first.x, first.y);
+    chartHistory.forEach(d => {
+      let p = toPixel(d.gen, d.max);
+      ctx.lineTo(p.x, p.y);
+    });
+    let last = toPixel(chartHistory[chartHistory.length - 1].gen, chartHistory[chartHistory.length - 1].max);
+    ctx.lineTo(last.x, padT + chartH);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Courbe MAX (jaune néon)
+  drawCurve(
+    chartHistory.map(d => ({ gen: d.gen, val: d.max })),
+    '#ffdc00',
+    'rgba(255,220,0,0.6)'
+  );
+
+  // Courbe AVG (violet néon)
+  drawCurve(
+    chartHistory.map(d => ({ gen: d.gen, val: d.avg })),
+    '#b400ff',
+    'rgba(180,0,255,0.5)'
+  );
+
+  // Ligne verticale sur la dernière génération connue
+  if (chartHistory.length > 0) {
+    let lastGen = chartHistory[chartHistory.length - 1].gen;
+    let x = padL + (lastGen / totalGens) * chartW;
+    ctx.strokeStyle = 'rgba(0,255,200,0.25)';
+    ctx.lineWidth   = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(x, padT);
+    ctx.lineTo(x, padT + chartH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
 function updateTrainingUI() {
   if (!geneticAlgorithm) return;
-  
-  // Update stats display
-  document.getElementById('train-gen').textContent = geneticAlgorithm.generation + 1;
-  document.getElementById('train-max-fit').textContent = geneticAlgorithm.maxFitness.toFixed(2);
-  document.getElementById('train-avg-fit').textContent = geneticAlgorithm.avgFitness.toFixed(2);
+
+  let gen     = geneticAlgorithm.generation;
+  let maxFit  = geneticAlgorithm.maxFitness;
+  let avgFit  = geneticAlgorithm.avgFitness;
+
+  document.getElementById('train-gen').textContent       = gen + 1;
+  document.getElementById('train-max-fit').textContent   = maxFit.toFixed(2);
+  document.getElementById('train-avg-fit').textContent   = avgFit.toFixed(2);
+  document.getElementById('train-gen-time').textContent  = geneticAlgorithm.getGenerationElapsedTime();
+  document.getElementById('train-total-time').textContent= geneticAlgorithm.getTotalElapsedTime();
+
+  // Pousse un point dans le graphique seulement quand une génération se termine
+  // (évite de redessiner 60×/sec inutilement)
+  let lastCharted = chartHistory.length > 0 ? chartHistory[chartHistory.length - 1].gen : -1;
+  if (gen > lastCharted && maxFit > 0) {
+    pushChartData(gen, maxFit, avgFit);
+  }
 }
 
 // ─── DEBUG EDITOR ──────────────────────────────────────────
@@ -464,9 +657,15 @@ function draw() {
   } else if (gameState === 'gameOver') {
     drawGame(); // render frozen game behind overlay
   } else if (gameState === 'training') {
-    updateTrainingGame();
-    drawGame();
+    soundReady = false; // Coupe les sons pendant la simulation
+    for (let step = 0; step < TRAINING_STEPS_PER_FRAME; step++) {
+      if (gameState !== 'training') break; // session ended during loop
+      updateTrainingGame();
+    }
+    soundReady = true; // Réactive après
     updateTrainingUI();
+    // Canvas minimal — l'écran training DOM est par-dessus
+    background(15, 15, 30);
   }
   // 'start' and 'debug' — canvas just shows dark background
 }
@@ -570,60 +769,97 @@ function updateGame() {
 
 function updateTrainingGame() {
   frameCounter++;
-  
-  // Simple player AI: random vertical movement
-  if (frameCounter % 20 === 0) {
-    player.vel.y += random(-0.5, 0.5);
+
+  let testEnemy = window.trainingEnemy;
+
+  // IA joueuse : esquive basée sur la position de l'ennemi ET des missiles
+  if (testEnemy) {
+    let force = createVector(0, 0);
+    let dy = testEnemy.pos.y - player.pos.y;
+
+    // Esquive l'ennemi
+    if (dy > 30)       force.y -= player.upForce * 0.7;
+    else if (dy < -30) force.y += player.downForce * 0.7;
+
+    // Esquive le missile le plus proche
+    let closestMissile = null;
+    let closestDist = Infinity;
+    for (let m of enemyMissiles) {
+      let d = dist(m.pos.x, m.pos.y, player.pos.x, player.pos.y);
+      if (d < closestDist) { closestDist = d; closestMissile = m; }
+    }
+    if (closestMissile && closestDist < 120) {
+      let mdy = closestMissile.pos.y - player.pos.y;
+      if (mdy > 0) force.y -= player.upForce * 0.5; // missile en dessous → monte
+      else         force.y += player.downForce * 0.5;
+    }
+
+    force.y += player.gravity;
+    player.applyForce(force);
   }
-  
+
   player.update();
   player.checkBoundaries();
-  
-  // Train with single enemy
-  let testEnemy = window.trainingEnemy;
-  if (testEnemy && player.isAlive) {
+
+  // Wrap le joueur verticalement pour éviter la mort par boundary en training
+  // (on veut mesurer la fitness, pas que le joueur meure bêtement)
+  if (player.pos.y <= player.ceilingThreshold) {
+    player.pos.y = player.ceilingThreshold + 1;
+    player.vel.y = 0;
+  }
+  if (player.pos.y >= player.floorThreshold) {
+    player.pos.y = player.floorThreshold - 1;
+    player.vel.y = 0;
+  }
+  player.isAlive = true; // En training, le joueur ne meurt pas
+
+  if (testEnemy) {
     testEnemy.vel.x = -enemyScrollSpeed;
     testEnemy.applyBehaviors(player, [testEnemy], []);
     testEnemy.update(player);
-    
-    // Try to shoot
+
+    // Tir
     let missile = testEnemy.tryShoot(player);
     if (missile) enemyMissiles.push(missile);
-    
-    // Enemy missiles vs player
+
+    // Missiles ennemis vs joueur
     for (let i = enemyMissiles.length - 1; i >= 0; i--) {
       let m = enemyMissiles[i];
       m.update();
-      if (dist(m.pos.x, m.pos.y, player.pos.x, player.pos.y) < player.r + m.r) {
+      let d = dist(m.pos.x, m.pos.y, player.pos.x, player.pos.y);
+      if (d < player.r + m.r) {
         m.alive = false;
-        if (player.takeDamage()) {
-          player.isAlive = false;
-        }
+        // Impact compté directement ici — pas via takeDamage (pas de shields en training)
+        testEnemy.fitnessTracker.recordImpact();
       }
       if (!m.alive || m.isOffscreen()) enemyMissiles.splice(i, 1);
     }
-    
-    // Enemy body collision
-    if (dist(player.pos.x, player.pos.y, testEnemy.pos.x, testEnemy.pos.y) < player.r + testEnemy.r) {
-      if (player.takeDamage()) {
-        player.isAlive = false;
-      }
+
+    // Collision directe ennemi vs joueur
+    let dEnemy = dist(player.pos.x, player.pos.y, testEnemy.pos.x, testEnemy.pos.y);
+    if (dEnemy < player.r + testEnemy.r) {
+      testEnemy.fitnessTracker.recordImpact();
+    }
+
+    // Wrap l'ennemi quand il sort à gauche — il repasse à droite
+    if (testEnemy.pos.x < -50) {
+      testEnemy.pos.x = width * 0.7;
+      testEnemy.pos.y = random(80, height - 80);
+      testEnemy.vel.set(0, 0);
     }
   }
-  
-  // Check if session should end
-  if (geneticAlgorithm.shouldEndSession(frameCounter, player.isAlive)) {
-    // Record fitness and move to next individual
-    let testEnemy = window.trainingEnemy;
-    let missileHits = testEnemy ? testEnemy.fitnessTracker.impacts : 0;
+
+  // Fin de session
+  if (geneticAlgorithm.shouldEndSession(frameCounter, true)) {
+    let hits     = testEnemy ? testEnemy.fitnessTracker.impacts : 0;
     let evasions = testEnemy ? testEnemy.fitnessTracker.evasionsDetected : 0;
-    geneticAlgorithm.recordSessionFitness(missileHits, evasions, 0);
-    
-    // Start next session or generation
+    let brushes  = testEnemy ? testEnemy.fitnessTracker.playerBrushes : 0;
+
+    geneticAlgorithm.recordSessionFitness(hits, evasions, brushes);
+
     if (!geneticAlgorithm.isEvaluationPhaseComplete()) {
       startTrainingSession();
     } else {
-      // Evaluation phase done, advance to next generation
       if (geneticAlgorithm.advanceToNextGeneration()) {
         startTrainingSession();
       } else {

@@ -28,27 +28,63 @@
        HUD (visible during play)
   ═══════════════════════════════════════ -->
   <div id="screen-training" class="screen hidden">
-    <div class="overlay-title glow-yellow">🧬 NEURO-EVOLUTION TRAINING</div>
-    <div style="margin: 32px auto; max-width: 500px; text-align: center;">
-      <div style="font-family: Orbitron; font-size: 28px; color: #00ff88; margin: 16px 0;">
-        Generation: <span id="train-gen">0</span> / <span id="train-max-gen">10</span>
+    <div style="width:100%;height:100%;display:flex;flex-direction:column;padding:24px;box-sizing:border-box;gap:16px;">
+      
+      <!-- Header -->
+      <div style="text-align:center;">
+        <div class="overlay-title glow-yellow" style="font-size:24px;margin-bottom:0;">
+          🧬 NEURO-EVOLUTION TRAINING
+        </div>
       </div>
-      <div style="font-family: Orbitron; font-size: 20px; color: #00ddff; margin: 12px 0;">
-        Max Fitness: <span id="train-max-fit">0.00</span>
+
+      <!-- Stats row -->
+      <div style="display:flex;gap:24px;justify-content:center;flex-wrap:wrap;">
+        <div class="hud-item" style="align-items:center;">
+          <span class="hud-label">GENERATION</span>
+          <span class="hud-value" style="color:var(--neon-cyan);font-size:22px;">
+            <span id="train-gen">0</span> / <span id="train-max-gen">10</span>
+          </span>
+        </div>
+        <div class="hud-sep"></div>
+        <div class="hud-item" style="align-items:center;">
+          <span class="hud-label">MAX FITNESS</span>
+          <span class="hud-value" style="color:var(--neon-yellow);font-size:22px;" id="train-max-fit">0.00</span>
+        </div>
+        <div class="hud-sep"></div>
+        <div class="hud-item" style="align-items:center;">
+          <span class="hud-label">AVG FITNESS</span>
+          <span class="hud-value" style="color:var(--neon-purple);font-size:22px;" id="train-avg-fit">0.00</span>
+        </div>
+        <div class="hud-sep"></div>
+        <div class="hud-item" style="align-items:center;">
+          <span class="hud-label">GEN TIME</span>
+          <span class="hud-value" style="color:var(--neon-cyan);font-size:16px;" id="train-gen-time">00:00</span>
+        </div>
+        <div class="hud-sep"></div>
+        <div class="hud-item" style="align-items:center;">
+          <span class="hud-label">TOTAL TIME</span>
+          <span class="hud-value" style="color:var(--neon-cyan);font-size:16px;" id="train-total-time">00:00</span>
+        </div>
       </div>
-      <div style="font-family: Orbitron; font-size: 18px; color: #ffaa00; margin: 12px 0;">
-        Avg Fitness: <span id="train-avg-fit">0.00</span>
+
+      <!-- Chart -->
+      <div style="flex:1;position:relative;border:1px solid var(--border-neon);background:rgba(0,0,10,0.8);">
+        <canvas id="fitness-chart" style="width:100%;height:100%;display:block;"></canvas>
+        <div style="position:absolute;top:10px;left:16px;font-family:Orbitron;font-size:10px;letter-spacing:2px;opacity:0.5;">
+          FITNESS OVER GENERATIONS
+        </div>
+        <!-- Legend -->
+        <div style="position:absolute;top:10px;right:16px;display:flex;gap:16px;font-family:Orbitron;font-size:10px;letter-spacing:1px;">
+          <span style="color:var(--neon-yellow);">▬ MAX</span>
+          <span style="color:var(--neon-purple);">▬ AVG</span>
+        </div>
       </div>
-      <div style="font-family: Orbitron; font-size: 16px; color: #00ff88; margin-top: 24px;">
-        Gen Time: <span id="train-gen-time">00:00</span>
+
+      <!-- Cancel -->
+      <div style="text-align:center;">
+        <button class="btn btn-red btn-sm" id="btn-train-cancel">✕ CANCEL</button>
       </div>
-      <div style="font-family: Orbitron; font-size: 16px; color: #00ffff; margin: 8px 0;">
-        Total Time: <span id="train-total-time">00:00</span>
-      </div>
-      <div style="margin-top: 32px; font-size: 14px; color: #888;">
-        Training in progress... This may take a few minutes.
-      </div>
-      <button class="btn btn-purple btn-sm" id="btn-train-cancel" style="margin-top: 24px;">CANCEL</button>
+
     </div>
   </div>
   <div id="hud" class="hidden">
