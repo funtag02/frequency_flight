@@ -239,14 +239,10 @@ frequency-flight/
 ## Lancer le projet
 
 ```bash
-git clone https://github.com/votre-repo/frequency-flight.git
-cd frequency-flight
-npx serve .
-# ou
-python -m http.server 8080
+Ouvrir index.html avec LiveServer
 ```
 
-Ouvrir `http://localhost:8080`.
+Aller sur `http://127.0.0.1:5500/frequency_flight/index.html`.
 
 ---
 
