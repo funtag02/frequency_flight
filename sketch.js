@@ -3,6 +3,8 @@
  * DOM handles menus/HUD, p5 handles game rendering
  */
 
+const TRAINING_STEPS_PER_FRAME = 30; // 30× plus rapide
+
 let player;
 let levelGenerator;
 let gameUI;
@@ -124,47 +126,44 @@ function startTraining() {
 }
 
 function startTrainingSession() {
-  // Setup a game for evaluating current GA individual
   let individual = geneticAlgorithm.getCurrentIndividual();
   if (!individual) {
-    // All individuals evaluated, advance to next generation
     if (geneticAlgorithm.advanceToNextGeneration()) {
-      startTrainingSession(); // Start evaluating new generation
+      startTrainingSession();
     } else {
-      // Training complete
       finishTraining();
     }
     return;
   }
-  
-  // Setup minimal game (no levelGenerator needed for training)
+
   enemyScrollSpeed = 3.5;
-  
   player = new Player(100, height / 2);
   player.gravity = 0.08;
   player.upForce = 0.35;
-  
+
   playerMissiles = [];
-  enemyMissiles = [];
-  frameCounter = 0;
-  worldScrollX = 0;
-  
-  // Create test enemy with current brain
-  window.trainingEnemy = new Enemy(width + 100, height / 2, 'shooter', individual.brain);
-  window.trainingEnemy.fitnessTracker.resetBatch(); // Reset for this session
-  
-  // Show HUD and canvas
-  document.getElementById('hud').classList.add('hidden');
+  enemyMissiles  = [];
+  frameCounter   = 0;
+  worldScrollX   = 0;
+
+  // Spawn proche du joueur pour que la session soit utile
+  let spawnX = width * 0.6; // ~60% de l'écran — atteint le joueur rapidement
+  window.trainingEnemy = new Enemy(spawnX, height / 2, 'hunter', individual.brain);
+  // Ne pas reset le fitnessTracker ici — il est neuf à chaque new Enemy()
 }
 
 function finishTraining() {
   gameState = 'start';
-  showScreen('screen-start');
-  
-  // Save best brain
   let best = geneticAlgorithm.getBestBrain();
   localStorage.setItem('bestBrain_v1', JSON.stringify(best.toJSON()));
-  alert(`✅ Training complete!\nBest Fitness: ${geneticAlgorithm.maxFitness.toFixed(2)}\nBrain saved to localStorage`);
+
+  let subtitle = document.querySelector('.start-subtitle');
+  subtitle.textContent =
+    `✓ TRAINING COMPLETE — BEST FITNESS: ${geneticAlgorithm.maxFitness.toFixed(2)}`;
+  subtitle.style.color      = 'var(--neon-yellow)';
+  subtitle.style.textShadow = '0 0 8px var(--neon-yellow)';
+
+  showScreen('screen-start');
 }
 
 function triggerGameOver() {
@@ -176,13 +175,12 @@ function triggerGameOver() {
 
 function updateTrainingUI() {
   if (!geneticAlgorithm) return;
-  
-  // Update stats display
-  document.getElementById('train-gen').textContent = geneticAlgorithm.generation + 1;
-  document.getElementById('train-max-fit').textContent = geneticAlgorithm.maxFitness.toFixed(2);
-  document.getElementById('train-avg-fit').textContent = geneticAlgorithm.avgFitness.toFixed(2);
+  document.getElementById('train-gen').textContent      = geneticAlgorithm.generation + 1;
+  document.getElementById('train-max-fit').textContent  = geneticAlgorithm.maxFitness.toFixed(2);
+  document.getElementById('train-avg-fit').textContent  = geneticAlgorithm.avgFitness.toFixed(2);
+  document.getElementById('train-gen-time').textContent   = geneticAlgorithm.getGenerationElapsedTime();
+  document.getElementById('train-total-time').textContent = geneticAlgorithm.getTotalElapsedTime();
 }
-
 // ─── DEBUG EDITOR ──────────────────────────────────────────
 const ENEMY_TYPES = ['hunter','encircler','asteroid','formation','shooter','gunner'];
 
@@ -464,9 +462,15 @@ function draw() {
   } else if (gameState === 'gameOver') {
     drawGame(); // render frozen game behind overlay
   } else if (gameState === 'training') {
-    updateTrainingGame();
-    drawGame();
+    soundReady = false; // Coupe les sons pendant la simulation
+    for (let step = 0; step < TRAINING_STEPS_PER_FRAME; step++) {
+      if (gameState !== 'training') break; // session ended during loop
+      updateTrainingGame();
+    }
+    soundReady = true; // Réactive après
     updateTrainingUI();
+    // Canvas minimal — l'écran training DOM est par-dessus
+    background(15, 15, 30);
   }
   // 'start' and 'debug' — canvas just shows dark background
 }
@@ -570,60 +574,97 @@ function updateGame() {
 
 function updateTrainingGame() {
   frameCounter++;
-  
-  // Simple player AI: random vertical movement
-  if (frameCounter % 20 === 0) {
-    player.vel.y += random(-0.5, 0.5);
+
+  let testEnemy = window.trainingEnemy;
+
+  // IA joueuse : esquive basée sur la position de l'ennemi ET des missiles
+  if (testEnemy) {
+    let force = createVector(0, 0);
+    let dy = testEnemy.pos.y - player.pos.y;
+
+    // Esquive l'ennemi
+    if (dy > 30)       force.y -= player.upForce * 0.7;
+    else if (dy < -30) force.y += player.downForce * 0.7;
+
+    // Esquive le missile le plus proche
+    let closestMissile = null;
+    let closestDist = Infinity;
+    for (let m of enemyMissiles) {
+      let d = dist(m.pos.x, m.pos.y, player.pos.x, player.pos.y);
+      if (d < closestDist) { closestDist = d; closestMissile = m; }
+    }
+    if (closestMissile && closestDist < 120) {
+      let mdy = closestMissile.pos.y - player.pos.y;
+      if (mdy > 0) force.y -= player.upForce * 0.5; // missile en dessous → monte
+      else         force.y += player.downForce * 0.5;
+    }
+
+    force.y += player.gravity;
+    player.applyForce(force);
   }
-  
+
   player.update();
   player.checkBoundaries();
-  
-  // Train with single enemy
-  let testEnemy = window.trainingEnemy;
-  if (testEnemy && player.isAlive) {
+
+  // Wrap le joueur verticalement pour éviter la mort par boundary en training
+  // (on veut mesurer la fitness, pas que le joueur meure bêtement)
+  if (player.pos.y <= player.ceilingThreshold) {
+    player.pos.y = player.ceilingThreshold + 1;
+    player.vel.y = 0;
+  }
+  if (player.pos.y >= player.floorThreshold) {
+    player.pos.y = player.floorThreshold - 1;
+    player.vel.y = 0;
+  }
+  player.isAlive = true; // En training, le joueur ne meurt pas
+
+  if (testEnemy) {
     testEnemy.vel.x = -enemyScrollSpeed;
     testEnemy.applyBehaviors(player, [testEnemy], []);
     testEnemy.update(player);
-    
-    // Try to shoot
+
+    // Tir
     let missile = testEnemy.tryShoot(player);
     if (missile) enemyMissiles.push(missile);
-    
-    // Enemy missiles vs player
+
+    // Missiles ennemis vs joueur
     for (let i = enemyMissiles.length - 1; i >= 0; i--) {
       let m = enemyMissiles[i];
       m.update();
-      if (dist(m.pos.x, m.pos.y, player.pos.x, player.pos.y) < player.r + m.r) {
+      let d = dist(m.pos.x, m.pos.y, player.pos.x, player.pos.y);
+      if (d < player.r + m.r) {
         m.alive = false;
-        if (player.takeDamage()) {
-          player.isAlive = false;
-        }
+        // Impact compté directement ici — pas via takeDamage (pas de shields en training)
+        testEnemy.fitnessTracker.recordImpact();
       }
       if (!m.alive || m.isOffscreen()) enemyMissiles.splice(i, 1);
     }
-    
-    // Enemy body collision
-    if (dist(player.pos.x, player.pos.y, testEnemy.pos.x, testEnemy.pos.y) < player.r + testEnemy.r) {
-      if (player.takeDamage()) {
-        player.isAlive = false;
-      }
+
+    // Collision directe ennemi vs joueur
+    let dEnemy = dist(player.pos.x, player.pos.y, testEnemy.pos.x, testEnemy.pos.y);
+    if (dEnemy < player.r + testEnemy.r) {
+      testEnemy.fitnessTracker.recordImpact();
+    }
+
+    // Wrap l'ennemi quand il sort à gauche — il repasse à droite
+    if (testEnemy.pos.x < -50) {
+      testEnemy.pos.x = width * 0.7;
+      testEnemy.pos.y = random(80, height - 80);
+      testEnemy.vel.set(0, 0);
     }
   }
-  
-  // Check if session should end
-  if (geneticAlgorithm.shouldEndSession(frameCounter, player.isAlive)) {
-    // Record fitness and move to next individual
-    let testEnemy = window.trainingEnemy;
-    let missileHits = testEnemy ? testEnemy.fitnessTracker.impacts : 0;
+
+  // Fin de session
+  if (geneticAlgorithm.shouldEndSession(frameCounter, true)) {
+    let hits     = testEnemy ? testEnemy.fitnessTracker.impacts : 0;
     let evasions = testEnemy ? testEnemy.fitnessTracker.evasionsDetected : 0;
-    geneticAlgorithm.recordSessionFitness(missileHits, evasions, 0);
-    
-    // Start next session or generation
+    let brushes  = testEnemy ? testEnemy.fitnessTracker.playerBrushes : 0;
+
+    geneticAlgorithm.recordSessionFitness(hits, evasions, brushes);
+
     if (!geneticAlgorithm.isEvaluationPhaseComplete()) {
       startTrainingSession();
     } else {
-      // Evaluation phase done, advance to next generation
       if (geneticAlgorithm.advanceToNextGeneration()) {
         startTrainingSession();
       } else {

@@ -169,16 +169,17 @@ La configuration custom est sauvegardée en **localStorage** et rechargée autom
 ### Accès
 Bouton **TRAIN 🧬** sur l'écran d'accueil.
 
-### Fonctionnement
-1. **Population** : 20 individus (réseaux de neurones)
-2. **Générations** : 10 générations
-3. **Sessions par individu** : 3 évaluations (20 sec chacune)
-4. **Sélection élitiste** : Top 20% survivent
-5. **Variation génétique** : 
-   - 50% mutation pure (15% taux de bruit)
-   - 50% crossover parental + mutation (10% taux de bruit)
+### Ce que les réseaux de neurones apprennent
+
+Chaque ennemi possède un cerveau — un réseau feed-forward [10, 8, 8, 2]. À chaque frame il reçoit 10 capteurs normalisés (position joueur, distance, vitesse verticale, état boucliers...) et produit 2 sorties qui pondèrent ses steering behaviors.
+
+Sans entraînement, les poids sont aléatoires et l'ennemi se comporte de façon chaotique. L'entraînement fait évoluer ces poids pour que l'ennemi apprenne à **anticiper la trajectoire du joueur**, **se coordonner** avec d'autres ennemis, et **exploiter les moments de vulnérabilité**.
+
 
 ### Fitness
+
+La fitness mesure à quel point un cerveau atteint son objectif :
+
 ```
 fitness = (impacts_infligés × 10) + (evasions_détectées × 0.5) + (brosses × 0.2)
 ```
@@ -195,6 +196,27 @@ L'écran d'entraînement affiche:
 - **Génération courante** (1-10)
 - **Meilleure fitness** (max de la génération)
 - **Fitness moyenne** (population entière)
+
+### Algorithme génétique
+
+- **20 individus** évalués **3 sessions** chacun par génération
+- **Élitisme** : top 20% conservés sans modification
+- **Crossover** : mélange 50/50 des poids de deux parents
+- **Mutation** gaussienne : taux 10–15%
+- **Session** : 600 frames (~10 sec simulées) avec wrap de l'ennemi
+- **Vitesse** : 30 steps simulés par frame → ~30× plus rapide que temps réel
+- Le joueur IA esquive automatiquement — les ennemis s'entraînent contre lui
+- Le meilleur cerveau est sauvegardé en localStorage à la fin
+
+### État d'implémentation
+
+| Fonctionnalité | Statut | Notes |
+|---|---|---|
+| 🧬 Algorithme génétique | ✅ | Population 20, 3 sessions/individu |
+| 🏆 Mode entraînement | ✅ | IA joueuse, 30 steps/frame, stats live |
+| 💾 Sauvegarde best brain | ✅ | Export localStorage JSON |
+| 📊 Graphique fitness | ❌ | V2 |
+| 🔁 Chargement brain en jeu | ❌ | V2 — utiliser le cerveau entraîné en partie |
 
 ---
 
@@ -263,12 +285,12 @@ frequency-flight/
 | 🧬 Réseau de neurones | ✅ | Feed-forward [10, 8, 8, 2] |
 | 🌊 Steering behaviors | ✅ | Seek, pursue, arrive, wander, separate, avoid |
 | 🧠 Neuro-évolution | ✅ | GA 10 gen × 20 pop × 3 sessions, élitisme 20%, mutation/crossover |
-| 🎥 ML5.js | ❌ | V2 — handPose, faceMesh, tir bouche ouverte |
+| 🎥 ML5.js | ❌ | V3 — handPose, faceMesh, tir bouche ouverte |
 | 🎵 Musique 174 BPM | ❌ | V2 — piste FL Studio via p5.sound |
 | 💾 Sauvegarde brains | ✅ | localStorage `bestBrain_v1` |
-| 📊 Graphique fitness | ❌ | V2 — affichage historique performance par génération |
-| 🔧 Obstacles joueur | ❌ | V2 — clic pour placer, ennemis évitent |
-| 🌍 Niveaux easy/hard/killer | ❌ | V2 |
+| 📊 Graphique fitness | ❌ | V4 — affichage historique performance par génération |
+| 🔧 Obstacles joueur | ❌ | V5 — clic pour placer, ennemis évitent |
+| 🌍 Niveaux easy/hard/killer | ❌ | V5 |
 
 ---
 

@@ -38,7 +38,7 @@ class GeneticAlgorithm {
     this.generationStartTime = 0;
     
     // Session limits
-    this.maxSessionFrames = 1200; // 20 seconds at 60fps
+    this.maxSessionFrames = 600; // 10 seconds at 60fps
     this.maxSessionDistance = 5000; // Stop early if distance exceeds this
   }
 
