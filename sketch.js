@@ -6,7 +6,7 @@
 let player;
 let levelGenerator;
 let gameUI;
-let gameState = 'start'; // 'start' | 'playing' | 'paused' | 'gameOver' | 'debug'
+let gameState = 'start'; // 'start' | 'playing' | 'paused' | 'gameOver' | 'debug' | 'training'
 let frameCounter = 0;
 
 let worldScrollX = 0;
@@ -34,6 +34,7 @@ function setupDOM() {
   // Start screen
   document.getElementById('btn-play').onclick  = () => startGame(false);
   document.getElementById('btn-debug').onclick = () => openDebugEditor();
+  document.getElementById('btn-train').onclick = () => startTraining();
 
   // Pause
   document.getElementById('btn-resume').onclick = () => resumeGame();
@@ -49,10 +50,13 @@ function setupDOM() {
   document.getElementById('btn-save').onclick     = () => saveConfig();
   document.getElementById('btn-load').onclick     = () => loadConfig();
   document.getElementById('btn-reset').onclick    = () => resetConfig();
+
+  // Training
+  document.getElementById('btn-train-cancel').onclick = () => goToMenu();
 }
 
 function showScreen(id) {
-  ['screen-start','screen-pause','screen-gameover','screen-debug'].forEach(s => {
+  ['screen-start','screen-pause','screen-gameover','screen-debug','screen-training'].forEach(s => {
     document.getElementById(s).classList.add('hidden');
   });
   document.getElementById('hud').classList.add('hidden');
@@ -100,11 +104,83 @@ function goToMenu() {
   showScreen('screen-start');
 }
 
+function startTraining() {
+  gameState = 'training';
+  showScreen('screen-training');
+  
+  // Initialize GA
+  geneticAlgorithm = new GeneticAlgorithm(20, [10, 8, 8, 2]); // 20 individuals
+  geneticAlgorithm.startTraining(10); // 10 generations
+  
+  // Set session limits
+  geneticAlgorithm.maxSessionFrames = 1200; // 20 seconds at 60fps
+  geneticAlgorithm.maxSessionDistance = 5000; // Stop early if distance exceeds this
+  
+  // Update max gen display
+  document.getElementById('train-max-gen').textContent = '10';
+  
+  // Start first evaluation session
+  startTrainingSession();
+}
+
+function startTrainingSession() {
+  // Setup a game for evaluating current GA individual
+  let individual = geneticAlgorithm.getCurrentIndividual();
+  if (!individual) {
+    // All individuals evaluated, advance to next generation
+    if (geneticAlgorithm.advanceToNextGeneration()) {
+      startTrainingSession(); // Start evaluating new generation
+    } else {
+      // Training complete
+      finishTraining();
+    }
+    return;
+  }
+  
+  // Setup minimal game (no levelGenerator needed for training)
+  enemyScrollSpeed = 3.5;
+  
+  player = new Player(100, height / 2);
+  player.gravity = 0.08;
+  player.upForce = 0.35;
+  
+  playerMissiles = [];
+  enemyMissiles = [];
+  frameCounter = 0;
+  worldScrollX = 0;
+  
+  // Create test enemy with current brain
+  window.trainingEnemy = new Enemy(width + 100, height / 2, 'shooter', individual.brain);
+  window.trainingEnemy.fitnessTracker.resetBatch(); // Reset for this session
+  
+  // Show HUD and canvas
+  document.getElementById('hud').classList.add('hidden');
+}
+
+function finishTraining() {
+  gameState = 'start';
+  showScreen('screen-start');
+  
+  // Save best brain
+  let best = geneticAlgorithm.getBestBrain();
+  localStorage.setItem('bestBrain_v1', JSON.stringify(best.toJSON()));
+  alert(`✅ Training complete!\nBest Fitness: ${geneticAlgorithm.maxFitness.toFixed(2)}\nBrain saved to localStorage`);
+}
+
 function triggerGameOver() {
   gameState = 'gameOver';
   document.getElementById('gameover-distance').textContent =
     `DISTANCE — ${frameCounter}`;
   showScreen('screen-gameover');
+}
+
+function updateTrainingUI() {
+  if (!geneticAlgorithm) return;
+  
+  // Update stats display
+  document.getElementById('train-gen').textContent = geneticAlgorithm.generation + 1;
+  document.getElementById('train-max-fit').textContent = geneticAlgorithm.maxFitness.toFixed(2);
+  document.getElementById('train-avg-fit').textContent = geneticAlgorithm.avgFitness.toFixed(2);
 }
 
 // ─── DEBUG EDITOR ──────────────────────────────────────────
@@ -387,6 +463,10 @@ function draw() {
     drawGame(); // render frozen game behind overlay
   } else if (gameState === 'gameOver') {
     drawGame(); // render frozen game behind overlay
+  } else if (gameState === 'training') {
+    updateTrainingGame();
+    drawGame();
+    updateTrainingUI();
   }
   // 'start' and 'debug' — canvas just shows dark background
 }
@@ -488,14 +568,86 @@ function updateGame() {
   gameUI.updateHUD(player, activeEnemies, frameCounter);
 }
 
+function updateTrainingGame() {
+  frameCounter++;
+  
+  // Simple player AI: random vertical movement
+  if (frameCounter % 20 === 0) {
+    player.vel.y += random(-0.5, 0.5);
+  }
+  
+  player.update();
+  player.checkBoundaries();
+  
+  // Train with single enemy
+  let testEnemy = window.trainingEnemy;
+  if (testEnemy && player.isAlive) {
+    testEnemy.vel.x = -enemyScrollSpeed;
+    testEnemy.applyBehaviors(player, [testEnemy], []);
+    testEnemy.update(player);
+    
+    // Try to shoot
+    let missile = testEnemy.tryShoot(player);
+    if (missile) enemyMissiles.push(missile);
+    
+    // Enemy missiles vs player
+    for (let i = enemyMissiles.length - 1; i >= 0; i--) {
+      let m = enemyMissiles[i];
+      m.update();
+      if (dist(m.pos.x, m.pos.y, player.pos.x, player.pos.y) < player.r + m.r) {
+        m.alive = false;
+        if (player.takeDamage()) {
+          player.isAlive = false;
+        }
+      }
+      if (!m.alive || m.isOffscreen()) enemyMissiles.splice(i, 1);
+    }
+    
+    // Enemy body collision
+    if (dist(player.pos.x, player.pos.y, testEnemy.pos.x, testEnemy.pos.y) < player.r + testEnemy.r) {
+      if (player.takeDamage()) {
+        player.isAlive = false;
+      }
+    }
+  }
+  
+  // Check if session should end
+  if (geneticAlgorithm.shouldEndSession(frameCounter, player.isAlive)) {
+    // Record fitness and move to next individual
+    let testEnemy = window.trainingEnemy;
+    let missileHits = testEnemy ? testEnemy.fitnessTracker.impacts : 0;
+    let evasions = testEnemy ? testEnemy.fitnessTracker.evasionsDetected : 0;
+    geneticAlgorithm.recordSessionFitness(missileHits, evasions, 0);
+    
+    // Start next session or generation
+    if (!geneticAlgorithm.isEvaluationPhaseComplete()) {
+      startTrainingSession();
+    } else {
+      // Evaluation phase done, advance to next generation
+      if (geneticAlgorithm.advanceToNextGeneration()) {
+        startTrainingSession();
+      } else {
+        finishTraining();
+      }
+    }
+  }
+}
+
 function drawGame() {
   drawBackground();
   player.show();
   for (let m of playerMissiles) m.show();
   for (let m of enemyMissiles)  m.show();
-  let activeEnemies = levelGenerator.getActiveEnemies();
-  for (let enemy of activeEnemies) enemy.show();
-  gameUI.drawDebugInfo(player, activeEnemies);
+  
+  if (gameState === 'training') {
+    // Draw only the training enemy
+    if (window.trainingEnemy) window.trainingEnemy.show();
+  } else {
+    // Draw all active enemies
+    let activeEnemies = levelGenerator.getActiveEnemies();
+    for (let enemy of activeEnemies) enemy.show();
+    gameUI.drawDebugInfo(player, activeEnemies);
+  }
 }
 
 function wrapWorldCoordinates() {

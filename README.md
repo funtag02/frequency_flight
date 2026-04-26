@@ -164,7 +164,41 @@ La configuration custom est sauvegardée en **localStorage** et rechargée autom
 
 ---
 
-## Fonction de fitness
+## Mode Entraînement (V2) — Neuro-Évolution
+
+### Accès
+Bouton **TRAIN 🧬** sur l'écran d'accueil.
+
+### Fonctionnement
+1. **Population** : 20 individus (réseaux de neurones)
+2. **Générations** : 10 générations
+3. **Sessions par individu** : 3 évaluations (20 sec chacune)
+4. **Sélection élitiste** : Top 20% survivent
+5. **Variation génétique** : 
+   - 50% mutation pure (15% taux de bruit)
+   - 50% crossover parental + mutation (10% taux de bruit)
+
+### Fitness
+```
+fitness = (impacts_infligés × 10) + (evasions_détectées × 0.5) + (brosses × 0.2)
+```
+
+Chaque ennemi entraîné essaie de **tirer sur le joueur** ; le fitness récompense les impacts directs.
+
+### Résultat
+- Le **meilleur cerveau** (max fitness) est sauvegardé en `localStorage`
+- Clé : `bestBrain_v1`
+- Peut être chargé pour tester ses performances
+
+### Stats en temps réel
+L'écran d'entraînement affiche:
+- **Génération courante** (1-10)
+- **Meilleure fitness** (max de la génération)
+- **Fitness moyenne** (population entière)
+
+---
+
+## Fonction de fitness (gameplay)
 fitness = (impacts_infligés × bonus_coordination) − penalite_predictibilite
 
 | Composante | Calcul |
@@ -193,12 +227,13 @@ Inspiré de NEAT simplifié :
 ## Structure du projet
 
 frequency-flight/
-├── index.html              # Structure DOM — menus, HUD, éditeur
+├── index.html              # Structure DOM — menus, HUD, éditeur, écran training
 ├── style.css               # Thème néon — variables CSS, composants
-├── sketch.js               # Game loop p5 + orchestration DOM
+├── sketch.js               # Game loop p5 + orchestration DOM + training
 ├── vehicle.js              # IMMUABLE — classe Vehicle de base
-├── nn.js                   # Réseau de neurones feed-forward
+├── nn.js                   # Réseau de neurones feed-forward + sérialisation
 ├── fitness.js              # Calcul de fitness
+├── neuroevolution.js       # Algorithme génétique + entraînement
 ├── missile.js              # Missiles joueur et ennemis
 ├── player.js               # Vaisseau joueur
 ├── enemy.js                # 6 types d'ennemis + pulsation BPM
@@ -208,8 +243,8 @@ frequency-flight/
 │   └── medium/level.json   # Niveau medium (référence)
 ├── brains/                 # Cerveaux entraînés (JSON)
 └── assets/
-├── music/              # Piste jungle 174 BPM (V2)
-└── fonts/
+    ├── music/              # Piste liquid dnb 174 BPM (V2)
+    └── fonts/
 
 ---
 
@@ -227,11 +262,11 @@ frequency-flight/
 | 🔊 Effets sonores | ✅ | 5 sons synthétiques p5.Oscillator / Noise |
 | 🧬 Réseau de neurones | ✅ | Feed-forward [10, 8, 8, 2] |
 | 🌊 Steering behaviors | ✅ | Seek, pursue, arrive, wander, separate, avoid |
+| 🧠 Neuro-évolution | ✅ | GA 10 gen × 20 pop × 3 sessions, élitisme 20%, mutation/crossover |
 | 🎥 ML5.js | ❌ | V2 — handPose, faceMesh, tir bouche ouverte |
-| 🧠 Neuro-évolution | ❌ | V2 — population loop, mutation, crossover |
 | 🎵 Musique 174 BPM | ❌ | V2 — piste FL Studio via p5.sound |
-| 💾 Sauvegarde brains | ❌ | V2 — export / import JSON |
-| 📊 Graphique fitness | ❌ | V2 — affichage performance ennemis |
+| 💾 Sauvegarde brains | ✅ | localStorage `bestBrain_v1` |
+| 📊 Graphique fitness | ❌ | V2 — affichage historique performance par génération |
 | 🔧 Obstacles joueur | ❌ | V2 — clic pour placer, ennemis évitent |
 | 🌍 Niveaux easy/hard/killer | ❌ | V2 |
 

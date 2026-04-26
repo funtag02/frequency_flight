@@ -20,12 +20,37 @@
     <div class="start-buttons">
       <button class="btn btn-cyan"   id="btn-play">PLAY</button>
       <button class="btn btn-purple" id="btn-debug">DEBUG</button>
+      <button class="btn btn-yellow" id="btn-train">TRAIN 🧬</button>
     </div>
   </div>
 
   <!-- ═══════════════════════════════════════
        HUD (visible during play)
   ═══════════════════════════════════════ -->
+  <div id="screen-training" class="screen hidden">
+    <div class="overlay-title glow-yellow">🧬 NEURO-EVOLUTION TRAINING</div>
+    <div style="margin: 32px auto; max-width: 500px; text-align: center;">
+      <div style="font-family: Orbitron; font-size: 28px; color: #00ff88; margin: 16px 0;">
+        Generation: <span id="train-gen">0</span> / <span id="train-max-gen">10</span>
+      </div>
+      <div style="font-family: Orbitron; font-size: 20px; color: #00ddff; margin: 12px 0;">
+        Max Fitness: <span id="train-max-fit">0.00</span>
+      </div>
+      <div style="font-family: Orbitron; font-size: 18px; color: #ffaa00; margin: 12px 0;">
+        Avg Fitness: <span id="train-avg-fit">0.00</span>
+      </div>
+      <div style="font-family: Orbitron; font-size: 16px; color: #00ff88; margin-top: 24px;">
+        Gen Time: <span id="train-gen-time">00:00</span>
+      </div>
+      <div style="font-family: Orbitron; font-size: 16px; color: #00ffff; margin: 8px 0;">
+        Total Time: <span id="train-total-time">00:00</span>
+      </div>
+      <div style="margin-top: 32px; font-size: 14px; color: #888;">
+        Training in progress... This may take a few minutes.
+      </div>
+      <button class="btn btn-purple btn-sm" id="btn-train-cancel" style="margin-top: 24px;">CANCEL</button>
+    </div>
+  </div>
   <div id="hud" class="hidden">
     <div class="hud-item">
       <span class="hud-label">DISTANCE</span>
@@ -140,6 +165,7 @@
   <script src="vehicle.js"></script>
   <script src="nn.js"></script>
   <script src="fitness.js"></script>
+  <script src="neuroevolution.js"></script>
   <script src="missile.js"></script>
   <script src="player.js"></script>
   <script src="enemy.js"></script>

@@ -137,6 +137,25 @@ class NeuralNetwork {
     
     return childNN;
   }
+
+  // Serialize to JSON
+  toJSON() {
+    return {
+      topology: this.topology,
+      layers: this.layers,
+      biases: this.biases
+    };
+  }
+
+  // Deserialize from JSON
+  static fromJSON(data) {
+    let nn = new NeuralNetwork(data.topology);
+    nn.layers = data.layers.map(layer => 
+      layer.map(weights => [...weights])
+    );
+    nn.biases = data.biases.map(bias => [...bias]);
+    return nn;
+  }
 }
 
 // Helper: sigmoid activation (optional)
